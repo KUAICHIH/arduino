@@ -13,7 +13,7 @@
 // WiFi 設定
 const char* ssid = "LAPTOP-H200NENE 7672";
 const char* password = "11024211";
-const char* api_url = "http://192.168.137.1:3002/card";
+const char* api_url = "http://192.168.137.1:3000/api/updatecondition/products";
 
 // RFID 相關常數
 const unsigned long CARD_READ_TIMEOUT = 5000;  // 卡片讀取超時時間 (5秒)
@@ -34,30 +34,6 @@ bool rfidDetectionEnabled = true;
 String currentCardUID = "";
 unsigned long lastLightChangeTime = 0;
 bool lastLightState = true;
-
-// 獲取當前 JSON 數據
-String getCurrentJson() {
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi 未連接，無法獲取 JSON");
-        return "";
-    }
-
-    HTTPClient http;
-    http.begin(api_url);
-    
-    int httpResponseCode = http.GET();
-    String response = "";
-    
-    if (httpResponseCode == 200) {
-        response = http.getString();
-        Serial.println("成功獲取當前 JSON 數據");
-    } else {
-        Serial.printf("獲取 JSON 失敗，狀態碼: %d\n", httpResponseCode);
-    }
-    
-    http.end();
-    return response;
-}
 
 // 光線感測防抖
 bool getDebouncedLightState(int lightValue) {
@@ -109,7 +85,7 @@ String readCardUID() {
     return "";
 }
 
-// 更新 JSON 並發送 PUT 請求
+// 更新狀態並發送 PUT 請求
 void updateJsonAndSendPutRequest(String cardUID, int lightValue) {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi 未連接，正在重新連接...");
@@ -121,39 +97,12 @@ void updateJsonAndSendPutRequest(String cardUID, int lightValue) {
         }
     }
 
-    String currentJsonStr = getCurrentJson();
-    if (currentJsonStr.isEmpty()) {
-        currentJsonStr = "{\"cards\":[]}";
-    }
-    
-    DynamicJsonDocument doc(1024);
-    DeserializationError error = deserializeJson(doc, currentJsonStr);
-    
-    if (error) {
-        Serial.println("JSON 解析失敗: " + String(error.c_str()));
-        return;
-    }
-    
-    JsonArray cards = doc["cards"].as<JsonArray>();
-    bool found = false;
+    // 建立簡化的 JSON 結構，只包含機器 ID 和狀態
+    DynamicJsonDocument doc(256);  // 減少記憶體分配，因為結構更簡單了
     bool newCondition = lightValue >= DARK_THRESHOLD;
     
-    for (JsonObject card : cards) {
-        if (card["machineid"].as<String>() == cardUID) {
-            if (card["condition"].as<bool>() != newCondition) {
-                card["condition"] = newCondition;
-                found = true;
-                break;
-            }
-            return; // 如果狀態沒變，不需要更新
-        }
-    }
-    
-    if (!found) {
-        JsonObject newCard = cards.createNestedObject();
-        newCard["machineid"] = cardUID;
-        newCard["condition"] = newCondition;
-    }
+    doc["machineid"] = cardUID;
+    doc["condition"] = newCondition;
     
     HTTPClient http;
     http.begin(api_url);
