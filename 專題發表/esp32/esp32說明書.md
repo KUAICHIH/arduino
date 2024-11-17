@@ -62,8 +62,8 @@
 
 ### 1. WiFi 連接設定
 ```cpp
-const char* ssid = "LAPTOP-H200NENE 7672";
-const char* password = "11024211";
+const char* ssid = "UR_SSID";
+const char* password = "UR_PASSWORD";
 ```
 設定 WiFi 的 SSID 和密碼。若連接失敗，ESP32 會重新啟動。
 
