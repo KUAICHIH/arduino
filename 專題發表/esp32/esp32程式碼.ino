@@ -1,9 +1,11 @@
 #include <SPI.h>
 #include <MFRC522.h>
-#include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+
+// 在全局定義一個簡短的引用別名
+HardwareSerial &S = Serial;
 
 // RFID 模組接線 (RC522)
 #define SDA_PIN 5    
@@ -13,7 +15,7 @@
 // WiFi 設定
 const char* ssid = "LAPTOP-H200NENE 7672";
 const char* password = "11024211";
-const char* api_url = "http://192.168.137.1:3000/api/updatecondition/products";
+const char* api_url = "http://192.168.137.186:3000/api/updatecondition/products";
 
 // RFID 相關常數
 const unsigned long CARD_READ_TIMEOUT = 5000;  // 卡片讀取超時時間 (5秒)
@@ -21,8 +23,8 @@ const unsigned long RETRY_DELAY = 1000;        // 重試延遲
 const byte MAX_RETRY_COUNT = 3;               // 最大重試次數
 
 // 光線感測相關常數
-const int LIGHT_THRESHOLD = 1000;
-const int DARK_THRESHOLD = 800;
+const int LIGHT_THRESHOLD = 2000;
+const int DARK_THRESHOLD = 1800;
 const int LIGHT_SAMPLES = 5;                  // 光線採樣次數
 const unsigned long DEBOUNCE_DELAY = 500;     // 光線狀態防抖延遲
 
@@ -88,17 +90,17 @@ String readCardUID() {
 // 更新狀態並發送 PUT 請求
 void updateJsonAndSendPutRequest(String cardUID, int lightValue) {
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi 未連接，正在重新連接...");
+        S.println("WiFi 未連接，正在重新連接...");
         WiFi.reconnect();
         delay(5000);
         if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("WiFi 重連失敗");
+            S.println("WiFi 重連失敗");
             return;
         }
     }
 
-    // 建立簡化的 JSON 結構，只包含機器 ID 和狀態
-    DynamicJsonDocument doc(256);  // 減少記憶體分配，因為結構更簡單了
+    // 只發送卡片ID和狀態
+    DynamicJsonDocument doc(128);
     bool newCondition = lightValue >= DARK_THRESHOLD;
     
     doc["machineid"] = cardUID;
@@ -110,19 +112,19 @@ void updateJsonAndSendPutRequest(String cardUID, int lightValue) {
     
     String jsonString;
     serializeJson(doc, jsonString);
-    Serial.println("準備發送的 JSON: " + jsonString);
+    S.println("準備發送的 JSON: " + jsonString);
     
     int httpResponseCode = http.PUT(jsonString);
     if (httpResponseCode != 200) {
-        Serial.printf("API 更新失敗，狀態碼: %d\n", httpResponseCode);
+        S.printf("API 更新失敗，狀態碼: %d\n", httpResponseCode);
     } else {
-        Serial.println("成功更新 API");
+        S.println("成功更新 API");
     }
     http.end();
 }
 
 void setup() {
-    Serial.begin(115200);
+    S.begin(115200);
     
     // WiFi 連接
     WiFi.begin(ssid, password);
@@ -130,15 +132,15 @@ void setup() {
     
     while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
         delay(500);
-        Serial.print(".");
+        S.print(".");
     }
     
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("\nWiFi 連接失敗！正在重新啟動...");
+        S.println("\nWiFi 連接失敗！正在重新啟動...");
         ESP.restart();
     }
     
-    Serial.println("\nWiFi 已連接");
+    S.println("\nWiFi 已連接");
     
     // 初始化 SPI 和 RFID
     SPI.begin(18, 19, 23, 5);
@@ -196,11 +198,11 @@ void loop() {
 }
 
 void printSystemStatus(int lightValue) {
-    Serial.println("\n------- 系統狀態 -------");
-    Serial.printf("光線強度: %d\n", lightValue);
-    Serial.printf("光線狀態: %s\n", lastLightState ? "明亮" : "黑暗");
-    Serial.printf("卡片狀態: %s\n", cardReadCompleted ? "已讀取" : "未讀取");
-    Serial.printf("RFID狀態: %s\n", rfidDetectionEnabled ? "啟用" : "停用");
-    Serial.printf("當前UID: %s\n", currentCardUID.isEmpty() ? "無" : currentCardUID.c_str());
-    Serial.println("------------------------\n");
+    S.println("\n------- 系統狀態 -------");
+    S.printf("光線強度: %d\n", lightValue);
+    S.printf("光線狀態: %s\n", lastLightState ? "明亮" : "黑暗");
+    S.printf("卡片狀態: %s\n", cardReadCompleted ? "已讀取" : "未讀取");
+    S.printf("RFID狀態: %s\n", rfidDetectionEnabled ? "啟用" : "停用");
+    S.printf("當前UID: %s\n", currentCardUID.isEmpty() ? "無" : currentCardUID.c_str());
+    S.println("------------------------\n");
 }
