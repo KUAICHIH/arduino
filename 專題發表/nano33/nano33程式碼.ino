@@ -6,24 +6,26 @@
 #include <SPI.h>
 #include <U8g2lib.h>
 
+HardwareSerial &S = Serial;
+
 // WiFi 資料參數設定區
 const char* ssid = "LAPTOP-H200NENE 7672";
 const char* password = "11024211";
 // Post
-const char* serverName = "192.168.137.108";  // post IP
+const char* serverName = "192.168.137.186";  // post IP
 const int serverPort = 3000;
 const char* severendpoint = "/api/updaterecord";
 // Get
-const char* externalApiHost = "192.168.137.108";  // get API
+const char* externalApiHost = "192.168.137.186";  // get API
 const int externalport = 3000;
 const char* externalendpoint = "/api/updatemachine/products";
 // 新增卡片狀態檢查用的 API 參數
-const char* cardApiHost = "192.168.137.108";
+const char* cardApiHost = "192.168.137.186";
 const int cardApiPort = 3000;
 const char* cardApiEndpoint = "/api/updatecondition";
 
-String machinename = "NHUgym-270F";  // 用於OLED顯示
-String machineid = "123";  // 用於設備驗證
+String machinename = "GymGram-270F";  // 用於OLED顯示
+String machineid = "23f83a00";  // 用於設備驗證
 
 WiFiClient wifi;
 HttpClient client = HttpClient(wifi, serverName, serverPort);
@@ -94,7 +96,7 @@ const int greenColor[3] = {0, 255, 0};
 
 // 重製區
 void resetAllStates() {
-    Serial.println("\n[Reset] Resetting all states...");
+    S.println("\n[Reset] Resetting all states...");
     
     isUserVerified = false;
     isDetecting = false;
@@ -174,7 +176,7 @@ void getExternalData() {
   WiFiClient client;
 
   if (client.connect(externalApiHost, externalport)) {
-    Serial.println("Connected to API server");
+    S.println("Connected to API server");
 
     // 發送 GET 請求
     client.print(String("GET ") + externalendpoint + " HTTP/1.1\r\n" +
@@ -185,7 +187,7 @@ void getExternalData() {
     unsigned long timeout = millis();
     while (client.available() == 0) {
       if (millis() - timeout > 5000) {
-        Serial.println(">>> Client Timeout !");
+        S.println(">>> Client Timeout !");
         client.stop();
         flashOnce(redColor);
         return;
@@ -214,22 +216,22 @@ void getExternalData() {
     }
 
     if (response.isEmpty()) {
-      Serial.println("No valid JSON response found");
+      S.println("No valid JSON response found");
       flashOnce(redColor);
       client.stop();
       return;
     }
 
-    Serial.println("\nReceived JSON Response:");
-    Serial.println(response);
+    S.println("\nReceived JSON Response:");
+    S.println(response);
 
     // 解析 JSON
     StaticJsonDocument<jsonSize> doc;
     DeserializationError error = deserializeJson(doc, response);
 
     if (error) {
-      Serial.print("JSON parsing failed: ");
-      Serial.println(error.c_str());
+      S.print("JSON parsing failed: ");
+      S.println(error.c_str());
       flashOnce(redColor);
       client.stop();
       return;
@@ -237,7 +239,7 @@ void getExternalData() {
 
     // 檢查是否為空陣列
     if (doc.size() == 0) {
-      Serial.println("Empty JSON array");
+      S.println("Empty JSON array");
       flashOnce(redColor);
       client.stop();
       return;
@@ -249,21 +251,21 @@ void getExternalData() {
     if (!item.containsKey("id") || !item.containsKey("user") || 
         !item.containsKey("username") || !item.containsKey("machinename") || 
         !item.containsKey("machinenid")) {
-      Serial.println("Missing required fields in object");
+      S.println("Missing required fields in object");
       flashOnce(redColor);
       client.stop();
       return;
     }
 
-    Serial.println("\nParsed data:");
-    Serial.print("Received machinenid: ");
-    Serial.println(item["machinenid"].as<const char*>());
-    Serial.print("Expected machineid: ");
-    Serial.println(machineid);
-    Serial.print("Username: ");
-    Serial.println(item["username"].as<const char*>());
-    Serial.print("User ID: ");
-    Serial.println(item["user"].as<const char*>());
+    S.println("\nParsed data:");
+    S.print("Received machinenid: ");
+    S.println(item["machinenid"].as<const char*>());
+    S.print("Expected machineid: ");
+    S.println(machineid);
+    S.print("Username: ");
+    S.println(item["username"].as<const char*>());
+    S.print("User ID: ");
+    S.println(item["user"].as<const char*>());
 
     // 比對機器 ID
     if (String(item["machinenid"].as<const char*>()) == machineid) {
@@ -271,17 +273,17 @@ void getExternalData() {
       userId = item["user"].as<String>();
       isUserVerified = true;
 
-      Serial.println("User verified successfully!");
+      S.println("User verified successfully!");
       displayText();
       flashOnce(greenColor);
     } else {
-      Serial.println("Machine ID mismatch! Verification failed.");
+      S.println("Machine ID mismatch! Verification failed.");
       flashOnce(redColor);
     }
 
     client.stop();
   } else {
-    Serial.println("Connection to API server failed");
+    S.println("Connection to API server failed");
     flashOnce(redColor);
   }
 }
@@ -301,7 +303,7 @@ void detectMotion() {
         count_push_up++;
         isDown = true;
         motionDetected = true;
-        Serial.println("伏地挺身次數: " + String(count_push_up));
+        S.println("伏地挺身次數: " + String(count_push_up));
       }
     } else if (mpu.getAngleX() < 10) {
       isDown = false;
@@ -314,7 +316,7 @@ void detectMotion() {
         count_sit_up++;
         isDown = true;
         motionDetected = true;
-        Serial.println("仰臥起坐次數: " + String(count_sit_up));
+        S.println("仰臥起坐次數: " + String(count_sit_up));
       }
     } else if (mpu.getAngleY() < 20) {
       isDown = false;
@@ -327,7 +329,7 @@ void detectMotion() {
         count_squat++;
         isDown = true;
         motionDetected = true;
-        Serial.println("深蹲次數: " + String(count_squat));
+        S.println("深蹲次數: " + String(count_squat));
       }
     } else if (mpu.getAngleX() < 10) {
       isDown = false;
@@ -368,19 +370,19 @@ bool sendExerciseData() {
     
     while (!uploadSuccess && retryCount < MAX_RETRIES) {
         if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("\n[WiFi] Disconnected. Attempting to reconnect...");
+            S.println("\n[WiFi] Disconnected. Attempting to reconnect...");
             setColor(redColor[0], redColor[1], redColor[2]);
             WiFi.begin(ssid, password);
             
             int connectAttempts = 0;
             while (WiFi.status() != WL_CONNECTED && connectAttempts < WIFI_CONNECT_TIMEOUT) {
                 delay(500);
-                Serial.print(".");
+                S.print(".");
                 connectAttempts++;
             }
             
             if (WiFi.status() != WL_CONNECTED) {
-                Serial.println("[WiFi] Reconnection failed");
+                S.println("[WiFi] Reconnection failed");
                 retryCount++;
                 flashOnce(redColor);
                 continue;
@@ -416,8 +418,8 @@ bool sendExerciseData() {
         String putJsonString;
         serializeJson(putData, putJsonString);
         
-        Serial.println("\n[Upload] Sending data:");
-        Serial.println(putJsonString);
+        S.println("\n[Upload] Sending data:");
+        S.println(putJsonString);
         
         setColor(purpleColor[0], purpleColor[1], purpleColor[2]);
         client.put(severendpoint, "application/json", putJsonString);
@@ -425,13 +427,13 @@ bool sendExerciseData() {
         int statusCode = client.responseStatusCode();
         String response = client.responseBody();
         
-        Serial.print("[Upload] Status code: ");
-        Serial.println(statusCode);
-        Serial.print("[Upload] Response: ");
-        Serial.println(response);
+        S.print("[Upload] Status code: ");
+        S.println(statusCode);
+        S.print("[Upload] Response: ");
+        S.println(response);
         
         if (statusCode == 200 && response.indexOf("ok") != -1) {
-            Serial.println("[Upload] Success!");
+            S.println("[Upload] Success!");
             uploadSuccess = true;
             
             setColor(greenColor[0], greenColor[1], greenColor[2]);
@@ -439,26 +441,26 @@ bool sendExerciseData() {
             
             resetAllStates();
             
-            Serial.println("[Verify] Getting new user data...");
+            S.println("[Verify] Getting new user data...");
             getExternalData();
             
             return true;
         } else {
-            Serial.println("[Upload] Failed or invalid response");
+            S.println("[Upload] Failed or invalid response");
             flashOnce(redColor);
             retryCount++;
             
             if (retryCount < MAX_RETRIES) {
-                Serial.print("[Retry] Waiting ");
-                Serial.print(RETRY_DELAY / 1000);
-                Serial.println(" seconds before next attempt...");
+                S.print("[Retry] Waiting ");
+                S.print(RETRY_DELAY / 1000);
+                S.println(" seconds before next attempt...");
                 delay(RETRY_DELAY);
             }
         }
     }
     
     if (!uploadSuccess) {
-        Serial.println("\n[Error] Failed to upload after maximum retries");
+        S.println("\n[Error] Failed to upload after maximum retries");
         setColor(redColor[0], redColor[1], redColor[2]);
         delay(ERROR_DISPLAY);
         setColor(0, 0, 0);
@@ -472,7 +474,7 @@ bool checkCardStatus() {
     WiFiClient cardClient;
     
     if (cardClient.connect(cardApiHost, cardApiPort)) {
-        Serial.println("\n[卡片檢查] 已連接到卡片狀態伺服器");
+        S.println("\n[卡片檢查] 已連接到卡片狀態伺服器");
         
         // 發送 GET 請求
         cardClient.print(String("GET ") + cardApiEndpoint + " HTTP/1.1\r\n" +
@@ -483,7 +485,7 @@ bool checkCardStatus() {
         unsigned long timeout = millis();
         while (cardClient.available() == 0) {
             if (millis() - timeout > 5000) {
-                Serial.println("[卡片檢查] 連線超時！");
+                S.println("[卡片檢查] 連線超時！");
                 cardClient.stop();
                 return true;  // 連線超時時回傳 true 以避免錯誤中斷使用
             }
@@ -504,13 +506,13 @@ bool checkCardStatus() {
             }
         }
         
-        Serial.println("[卡片檢查] 收到回應：");
-        Serial.println(response);
+        S.println("[卡片檢查] 收到回應：");
+        S.println(response);
 
         // 清除非 JSON 部分
         int jsonIndex = response.indexOf("{"); // 找到 JSON 開始的索引
         if (jsonIndex == -1) {
-            Serial.println("[卡片檢查] 未找到 JSON 格式，將不處理。");
+            S.println("[卡片檢查] 未找到 JSON 格式，將不處理。");
             cardClient.stop();
             return false;  // 未找到 JSON 格式時回傳 false
         }
@@ -520,7 +522,7 @@ bool checkCardStatus() {
         
         // 檢查是否為有效的 JSON 格式
         if (!response.startsWith("{") && !response.startsWith("[")) {
-            Serial.println("[卡片檢查] 收到非 JSON 格式的回應，將不處理。");
+            S.println("[卡片檢查] 收到非 JSON 格式的回應，將不處理。");
             cardClient.stop();
             return false;  // 非 JSON 格式時回傳 false
         }
@@ -530,8 +532,8 @@ bool checkCardStatus() {
         DeserializationError error = deserializeJson(doc, response);
 
         if (error) {
-            Serial.print("[卡片檢查] JSON 解析失敗：");
-            Serial.println(error.c_str());
+            S.print("[卡片檢查] JSON 解析失敗：");
+            S.println(error.c_str());
             cardClient.stop();
             return false;  // JSON 解析失敗時回傳 false
         }
@@ -542,26 +544,26 @@ bool checkCardStatus() {
         for (JsonVariant card : cards) {
             if (card["machineid"].as<String>() == machineid) {
                 bool condition = card["condition"].as<String>() == "true"; // 將字串轉換為布林值
-                Serial.print("[卡片檢查] 找到匹配的機器 ID,狀態：");
-                Serial.println(condition);
+                S.print("[卡片檢查] 找到匹配的機器 ID,狀態：");
+                S.println(condition);
                 cardClient.stop();
                 return condition;  // 返回卡片狀態
             }
         }
         
-        Serial.println("[卡片檢查] 回應中未找到對應的機器 ID");
+        S.println("[卡片檢查] 回應中未找到對應的機器 ID");
         cardClient.stop();
         return false;  // 找不到機器 ID 時回傳 false
     }
     
-    Serial.println("[卡片檢查] 無法連接到卡片狀態伺服器");
+    S.println("[卡片檢查] 無法連接到卡片狀態伺服器");
     return false;  // 連線失敗時回傳 false
 }
 
 
 
 void setup() {
-  Serial.begin(115200);
+  S.begin(115200);
   Wire.begin();
   mpu.begin();
   u8g2.begin();
@@ -580,14 +582,14 @@ void setup() {
   hasStartedCountdown = false;
 
   // 連接 WiFi
-  Serial.print("Connecting to WiFi");
+  S.print("Connecting to WiFi");
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
+    S.print(".");
     delay(1000);
   }
-  Serial.println("\nConnected to WiFi");
-  Serial.println(WiFi.localIP());
+  S.println("\nConnected to WiFi");
+  S.println(WiFi.localIP());
   
   setColor(0, 0, 0);
   displayText();
@@ -611,9 +613,9 @@ void loop() {
         if (currentMillis - lastModeChange >= MODE_TIMEOUT &&
             currentMillis - lastCardCheck >= 5000) {
             
-            Serial.println("\n[卡片檢查] 因閒置狀態開始檢查卡片狀態...");
+            S.println("\n[卡片檢查] 因閒置狀態開始檢查卡片狀態...");
             if (!checkCardStatus()) {
-                Serial.println("[卡片檢查] 卡片狀態為 false，重置所有狀態...");
+                S.println("[卡片檢查] 卡片狀態為 false，重置所有狀態...");
                 flashOnce(redColor);  // 閃爍紅燈提示
                 resetAllStates();     // 重置所有狀態
                 lastCardCheck = currentMillis;
