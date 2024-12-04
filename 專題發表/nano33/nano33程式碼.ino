@@ -12,15 +12,15 @@ HardwareSerial &S = Serial;
 const char* ssid = "LAPTOP-H200NENE 7672";
 const char* password = "11024211";
 // Post
-const char* serverName = "192.168.137.186";  // post IP
+const char* serverName = "192.168.137.24";  // post IP
 const int serverPort = 3000;
 const char* severendpoint = "/api/updaterecord";
 // Get
-const char* externalApiHost = "192.168.137.186";  // get API
+const char* externalApiHost = "192.168.137.24";  // get API
 const int externalport = 3000;
 const char* externalendpoint = "/api/updatemachine/products";
 // 新增卡片狀態檢查用的 API 參數
-const char* cardApiHost = "192.168.137.186";
+const char* cardApiHost = "192.168.137.24";
 const int cardApiPort = 3000;
 const char* cardApiEndpoint = "/api/updatecondition";
 
@@ -398,15 +398,15 @@ bool sendExerciseData() {
         
         switch (currentMode) {
             case PUSH_UP:
-                ActionType = "Push Up";
+                ActionType = "pushUp";
                 Frequency = count_push_up;
                 break;
             case SIT_UP:
-                ActionType = "Sit Up";
+                ActionType = "sitUp";
                 Frequency = count_sit_up;
                 break;
             case SQUAT:
-                ActionType = "Squat";
+                ActionType = "squat";
                 Frequency = count_squat;
                 break;
         }
