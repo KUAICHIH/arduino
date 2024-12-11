@@ -145,7 +145,7 @@ void detectMotion() {
       break;
     case SQUAT:
       // 深蹲偵測邏輯
-      if (mpu.getAngleY() > 30) {...}
+      if (mpu.getAngleX() > 30) {...}
       break;
   }
 }
